@@ -4,8 +4,9 @@ This project is designed to participate in a hackathon.
 
 The current implementation is based on the example of working with Google Agent Development Kit (ADK), according to the official documentation.
 
-## Structure
+## 📁 Structure
 
+```
 venture-assist-ai/
 ├── .gitignore
 ├── .env.example             # Example environment variables
@@ -20,3 +21,4 @@ venture-assist-ai/
 └── frontend/
 │   └── ...
 └── multi_tool_agent/        # Example a simple agent
+```
