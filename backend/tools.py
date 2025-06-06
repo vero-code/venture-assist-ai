@@ -85,101 +85,238 @@ def get_validator(idea: str, detailed_feedback: bool = False) -> dict:
 # Tool for MarketResearcherAgent
 def get_research(topic: str) -> dict:
     """
-    Conducts general market research on a given topic, including market size and key competitors.
+    Conducts general market research on a given topic, including market size,
+    key competitors, current trends, and future outlook using an LLM.
     Args:
         topic (str): The topic or industry for research.
     Returns:
         dict: Market research results.
     """
     print(f"--- Tool: get_research called for topic: {topic} ---")
-    # Placeholder for actual market research
-    if "fintech" in topic.lower():
-        return {"summary": "The fintech market is growing rapidly, with strong competition. The potential for innovation is high.", "market_size_usd_billion": 1500, "main_competitors": ["Leading Payment Processors", "Digital Banks", "Investment Platforms"]}
-    return {"summary": f"General research on '{topic}' shows growth potential, but deeper analysis is needed.", "details": "No specific data available."}
+
+    try:
+        model = genai.GenerativeModel(MODEL_GEMINI_PRO)
+
+        prompt = (
+            f"Conduct detailed market research on the '{topic}' industry. "
+            "Provide information on the following aspects in a structured format:\n"
+            "1. **Market Size:** Estimate the current market size (e.g., in USD billion/trillion).\n"
+            "2. **Key Competitors:** List 3-5 major players.\n"
+            "3. **Current Trends:** Describe 2-3 significant trends.\n"
+            "4. **Future Outlook:** Provide a brief outlook (e.g., growth potential, challenges).\n"
+            "5. **Innovation Potential:** Briefly comment on areas for innovation.\n\n"
+            "Format the response as a clear, concise summary suitable for a business report. "
+            "Do not include any introductory or concluding phrases like 'Here is the research...'. "
+            "Just provide the structured information."
+        )
+
+        print(f"--- Tool: Calling LLM for research on '{topic}' with model: {MODEL_GEMINI_PRO} ---")
+        response = model.generate_content(prompt)
+
+        research_summary = response.text
+        print(f"--- Tool: LLM generated research summary. ---")
+
+        return {
+            "status": "success",
+            "summary": research_summary,
+            "topic": topic
+        }
+
+    except Exception as e:
+        print(f"--- Tool ERROR: Failed to conduct research for '{topic}'. Error: {e} ---")
+        return {
+            "status": "error",
+            "error_message": f"Failed to conduct research for '{topic}' due to an internal error: {e}"
+        }
 
 # Tool for PitchDeckGeneratorAgent
 def get_pitch(idea_summary: str, sections: Optional[List[str]] = None) -> str:
     """
-    Generates a draft or sections of a pitch deck based on the provided idea.
+    Generates a draft or sections of a pitch deck based on the provided idea summary,
+    using an LLM to generate compelling content for each specified section.
     Args:
         idea_summary (str): A brief description of the startup idea.
-        sections (List[str], optional): A list of specific sections to generate (e.g., "Problem", "Solution", "Market").
+        sections (List[str], optional): A list of specific sections to generate
+                                        (e.g., "Problem", "Solution", "Market", "Team", "Business Model", "Competition", "Financials", "Call to Action").
+                                        Defaults to ["Problem", "Solution", "Market", "Team"] if not provided.
     Returns:
         str: The generated pitch deck text or its sections.
     """
     print(f"--- Tool: get_pitch called for idea: {idea_summary}, sections: {sections} ---")
+
     if not sections:
         sections = ["Problem", "Solution", "Market", "Team"]
-    
+
     generated_content = []
-    generated_content.append(f"**Pitch Deck for '{idea_summary}'**\n\n")
-    
-    for section in sections:
-        if section.lower() == "problem":
-            generated_content.append("## Problem\nThe existing problem is that users face [Describe user pain point].\n\n")
-        elif section.lower() == "solution":
-            generated_content.append("## Solution\nOur innovative solution offers [Describe your solution] to effectively address this problem.\n\n")
-        elif section.lower() == "market":
-            generated_content.append("## Market\nOur target market is [Market Size] and has [Growth Trends].\n\n")
-        elif section.lower() == "team":
-            generated_content.append("## Team\nOur team consists of [Experience and key members], ready to execute this vision.\n\n")
-        else:
-            generated_content.append(f"## {section}\n[Content for '{section}' section]\n\n")
+    generated_content.append(f"# Pitch Deck for '{idea_summary}'\n\n")
+
+    try:
+        model = genai.GenerativeModel(MODEL_GEMINI_FLASH)
+
+        for section in sections:
+            section_title = section.capitalize()
+            prompt = (
+                f"Generate a concise and compelling paragraph for the '{section_title}' section "
+                f"of a startup pitch deck. The startup idea is: '{idea_summary}'.\n\n"
+                f"Focus on key information relevant to a pitch. Do not include any introductory or "
+                f"concluding phrases outside of the generated section content. Start directly with the content for the section. "
+                f"Make sure the content is professional and persuasive."
+            )
+
+            if section.lower() == "problem":
+                prompt += " Specifically, describe the core pain point or unmet need that the idea addresses."
+            elif section.lower() == "solution":
+                prompt += " Specifically, describe how the idea innovatively solves the identified problem."
+            elif section.lower() == "market":
+                prompt += " Specifically, describe the target market, its size, and growth potential."
+            elif section.lower() == "team":
+                prompt += " Specifically, describe the key team members and their relevant experience or unique advantages."
+
+            print(f"--- Tool: Calling LLM for '{section_title}' section with model: {MODEL_GEMINI_FLASH} ---")
+            response = model.generate_content(prompt)
+            section_content = response.text
+            print(f"--- Tool: LLM generated content for '{section_title}'. ---")
+
+            generated_content.append(f"## {section_title}\n")
+            generated_content.append(section_content)
+            generated_content.append("\n\n")
+
+    except Exception as e:
+        print(f"--- Tool ERROR: Failed to generate pitch deck content for '{idea_summary}'. Error: {e} ---")
+        return f"Error generating pitch deck: {e}"
 
     return "".join(generated_content)
 
 # Tool for SummarySavingAgent
-def get_summary(content_to_summarize: str, save_to_drive: bool = False) -> str:
+def get_summary(content_to_summarize: str) -> str:
     """
-    Creates a brief summary of the provided content and can save it (e.g., as a PDF)
-    and upload it to Google Drive.
+    Creates a brief, high-quality summary of the provided content using an LLM.
     Args:
         content_to_summarize (str): Long text or report to be summarized.
-        save_to_drive (bool): If True, generate a PDF and attempt to save it to Google Drive.
     Returns:
-        str: The condensed summary and saving information.
+        str: The condensed summary.
     """
     print(f"--- Tool: get_summary called for content length: {len(content_to_summarize)} ---")
-    # Simple placeholder for summarization
-    summary = f"Brief summary: '{content_to_summarize[:150]}...' The final report is ready."
-    
-    if save_to_drive:
-        # Simulate PDF generation and saving
-        file_name = f"Startup_Report_Summary_{hash(content_to_summarize)}.pdf"
-        drive_link = f"https://mock-drive.google.com/link/{file_name}"
-        return f"{summary} A PDF report has been generated and saved to Google Drive: {drive_link}"
-    
-    return summary
+
+    try:
+        model = genai.GenerativeModel(MODEL_GEMINI_FLASH)
+
+        prompt = (
+            f"Please provide a concise, factual, and neutral summary of the following content. "
+            "Focus on the main points and key information. "
+            "The summary should be no longer than 3-5 sentences unless the content is extremely long, "
+            "in which case provide a slightly longer but still concise summary. "
+            "Do not include any introductory phrases like 'Here is a summary...' or 'This content is about...'. "
+            "Just provide the summary directly.\n\n"
+            "Content to summarize:\n"
+            f"{content_to_summarize}"
+        )
+
+        print(f"--- Tool: Calling LLM for summarization with model: {MODEL_GEMINI_FLASH} ---")
+        response = model.generate_content(prompt)
+        llm_summary = response.text
+        print(f"--- Tool: LLM generated summary. ---")
+        return f"Summary: {llm_summary}"
+
+    except Exception as e:
+        print(f"--- Tool ERROR: Failed to generate summary. Error: {e} ---")
+        return f"Error: Could not generate a summary due to an internal LLM error: {e}"
 
 # Tool for LogoCreatorAgent
 def get_logo(idea_description: str) -> str:
     """
-    Generates a concept and URL for a logo based on the startup idea description.
+    Generates a creative concept and a placeholder URL for a logo based on the startup idea description,
+    using an LLM to craft the concept.
     Args:
         idea_description (str): Description of the startup idea for logo creation.
     Returns:
-        str: URL of the generated logo and its brief description.
+        str: Description of the generated logo concept and its preview URL.
     """
     print(f"--- Tool: get_logo called for idea: {idea_description} ---")
-    # Placeholder for logo generation
-    logo_concept = f"A minimalistic logo inspired by '{idea_description}', using modern fonts and geometric shapes."
-    logo_url = f"https://picsum.photos/seed/{hash(idea_description)}/200/200" # Simple URL placeholder
-    return f"Logo concept generated: '{logo_concept}'. Preview: {logo_url}"
+
+    try:
+        model = genai.GenerativeModel(MODEL_GEMINI_PRO)
+
+        prompt = (
+            f"Generate a concise and creative concept for a startup logo based on the following idea description:\n"
+            f"'{idea_description}'\n\n"
+            "The concept should include:\n"
+            "1. **Main elements/icons:** What visual elements or symbols should be present?\n"
+            "2. **Color palette:** Suggest 2-3 primary colors and their mood/meaning.\n"
+            "3. **Typography style:** Suggest a font style (e.g., modern sans-serif, classic serif, bold, playful).\n"
+            "4. **Overall mood/feeling:** What emotion or impression should the logo convey?\n"
+            "Keep it brief, 3-5 sentences total, focusing on key design aspects. Do not include any introductory or concluding phrases. "
+            "Just provide the logo concept directly."
+        )
+
+        print(f"--- Tool: Calling LLM for logo concept with model: {MODEL_GEMINI_PRO} ---")
+        response = model.generate_content(prompt)
+        llm_logo_concept = response.text
+        print(f"--- Tool: LLM generated logo concept. ---")
+
+        logo_url = f"https://picsum.photos/seed/{hash(idea_description)}/200/200"
+        
+        return f"Logo concept generated:\n\n'{llm_logo_concept}'.\n\nPreview (placeholder): {logo_url}"
+
+    except Exception as e:
+        print(f"--- Tool ERROR: Failed to generate logo concept for '{idea_description}'. Error: {e} ---")
+        return f"Error generating logo concept: {e}"
 
 # Tool for MeetMakerAgent
 def get_meeting(purpose: str, participant_email: str, preferred_date: str = "") -> str:
     """
     Organizes a meeting (e.g., with an investor) for the specified purpose and participant.
-    May suggest available slots.
+    Uses an LLM to generate a realistic confirmation message and suggest next steps.
     Args:
         purpose (str): The purpose of the meeting (e.g., "Investor meeting", "Project discussion").
         participant_email (str): The email of the participant with whom to organize the meeting.
-        preferred_date (str, optional): Preferred date for the meeting (e.g., "tomorrow", "next week").
+        preferred_date (str, optional): Preferred date for the meeting (e.g., "tomorrow", "next week", "June 10th").
+                                        Defaults to an empty string, implying flexibility.
     Returns:
         str: Confirmation of meeting organization or a request for clarification.
     """
-    print(f"--- Tool: get_meeting called for purpose: {purpose}, participant: {participant_email} ---")
-    # Placeholder for meeting scheduling
-    if "@" in participant_email:
-        return f"Attempting to organize a meeting '{purpose}' with {participant_email}. Please await email confirmation. Preferred date: {preferred_date if preferred_date else 'any available'}."
-    return "Failed to organize meeting. Please ensure the purpose and a valid participant email are provided."
+    print(f"--- Tool: get_meeting called for purpose: {purpose}, participant: {participant_email}, preferred_date: '{preferred_date}' ---")
+
+    if "@" not in participant_email or "." not in participant_email:
+        print(f"--- Tool: Invalid email format for participant: {participant_email} ---")
+        return "Failed to organize meeting. Please ensure a valid participant email is provided (e.g., 'name@example.com')."
+    
+    try:
+        model = genai.GenerativeModel(MODEL_GEMINI_FLASH)
+
+        prompt_parts = [
+            f"You are a meeting scheduling assistant. Generate a confirmation message for organizing a meeting.",
+            f"The meeting purpose is: '{purpose}'.",
+            f"The participant is: '{participant_email}'.",
+        ]
+
+        if preferred_date:
+            prompt_parts.append(f"The preferred date is: '{preferred_date}'.")
+            prompt_parts.append(
+                "Based on the preferred date, suggest 2-3 potential time slots. "
+                "If the date is general (e.g., 'next week'), suggest slots within that general timeframe. "
+                "Make the suggestions realistic, e.g., 'Monday, June 10th at 10 AM EEST' or 'Tuesday, June 11th at 2 PM EEST'."
+            )
+        else:
+            prompt_parts.append(
+                "No specific date preferred. Suggest a few general options for next steps, "
+                "e.g., asking for participant's availability."
+            )
+        
+        prompt_parts.append(
+            "The message should be polite, professional, and clearly state the next steps (e.g., 'Awaiting confirmation' or 'Please confirm availability')."
+            "Do not include any salutations (like 'Dear...') or closings (like 'Sincerely...'). Start directly with the confirmation."
+        )
+
+        final_prompt = "\n".join(prompt_parts)
+
+        print(f"--- Tool: Calling LLM for meeting confirmation with model: {MODEL_GEMINI_FLASH} ---")
+        response = model.generate_content(final_prompt)
+        meeting_confirmation_message = response.text
+        print(f"--- Tool: LLM generated meeting confirmation. ---")
+
+        return meeting_confirmation_message
+
+    except Exception as e:
+        print(f"--- Tool ERROR: Failed to generate meeting confirmation for '{participant_email}'. Error: {e} ---")
+        return f"An error occurred while trying to organize the meeting: {e}. Please try again later."
