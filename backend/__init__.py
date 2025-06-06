@@ -1,2 +1,2 @@
-# backend/src/__init__.py
+# backend/__init__.py
 from . import agent
