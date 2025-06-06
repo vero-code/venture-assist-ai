@@ -1,5 +1,11 @@
 # backend/tools.py
 from typing import Optional, List
+import google.generativeai as genai
+import json
+from .config import (
+    MODEL_GEMINI_FLASH,
+    MODEL_GEMINI_PRO
+)
 
 # --- Tool Function Definitions ---
 # Each function represents a core operation for its corresponding agent.
@@ -8,6 +14,7 @@ from typing import Optional, List
 def get_validator(idea: str, detailed_feedback: bool = False) -> dict:
     """
     Validates a startup idea and provides feedback on its potential and viability.
+    Uses an LLM for deeper analysis.
     Args:
         idea (str): Description of the startup idea.
         detailed_feedback (bool): If True, provide more detailed feedback.
@@ -15,12 +22,65 @@ def get_validator(idea: str, detailed_feedback: bool = False) -> dict:
         dict: Validation status and message.
     """
     print(f"--- Tool: get_validator called for idea: {idea} ---")
-    if "crypto" in idea.lower() or "blockchain" in idea.lower():
+
+    # Prompt for the LLM to act as a validator
+    system_prompt = f"""
+    You are an expert in startup idea validation. Your task is to analyze the provided startup idea and assess its potential and viability.
+    Evaluate the idea based on the following criteria:
+    1.  **Novelty/Innovativeness**: How unique or innovative is the idea?
+    2.  **Problem Solved**: What problem does it solve, and how relevant is it?
+    3.  **Target Audience**: Who is the target audience, and how large/accessible is it?
+    4.  **Competitive Advantage**: What differentiates this idea from existing solutions or potential competitors?
+    5.  **Scalability**: How easily can the idea be expanded?
+    6.  **Potential Risks**: What are the main risks associated with implementing this idea (market, technical, financial)?
+
+    Your response must be in JSON format, containing:
+    - `status` (str): 'valid', 'needs_improvement', 'risky', 'novel' (you can add your own statuses)
+    - `short_feedback` (str): A brief conclusion (1-2 sentences).
+    - `detailed_feedback` (str, optional): A detailed analysis based on the criteria, if `detailed_feedback` is True.
+
+    Example JSON response:
+    ```json
+    {{
+        "status": "valid",
+        "short_feedback": "The mobile app idea for finding nannies has high potential but requires competitor research.",
+        "detailed_feedback": "Novelty: Analogues exist, but UI/UX can be improved. Problem: Relevant for busy parents. Target Audience: Parents with children, fairly large. Competitive Advantage: A unique selling proposition needs to be developed. Scalability: High. Risks: High competition, trust and safety issues."
+    }}
+    ```
+    """
+
+    user_message = f"Evaluate the following startup idea: {idea}"
+
+    try:
+        # Create a model for validation
+        model = genai.GenerativeModel(
+            MODEL_GEMINI_PRO,
+            generation_config=genai.GenerationConfig(
+                response_mime_type="application/json"
+            )
+        )
+        # Send request to LLM
+        response = model.generate_content(
+            [system_prompt, user_message]
+        )
+
+        # Parse JSON response
+        validation_result = json.loads(response.text)
+
         if detailed_feedback:
-            return {"status": "needs_improvement", "feedback": "The provided 'crypto' idea is too broad. To properly validate it, I need more specifics. For example: what problem does your crypto idea solve? What is your target market? What is your business model? What is your competitive advantage? The crypto market is highly volatile and regulated across different jurisdictions. A more detailed description is required for proper validation. Currently, the idea is marked as needing improvement."}
+            return {
+                "status": validation_result.get("status", "unknown"),
+                "feedback": validation_result.get("detailed_feedback", validation_result.get("short_feedback", "No specific feedback provided."))
+            }
         else:
-            return {"status": "needs_improvement", "feedback": "The idea is too general, more details are required."}
-    return {"status": "valid", "feedback": "The idea seems promising. You can proceed with market research."}
+            return {
+                "status": validation_result.get("status", "unknown"),
+                "feedback": validation_result.get("short_feedback", "No specific feedback provided.")
+            }
+
+    except Exception as e:
+        print(f"Error during LLM validation: {e}")
+        return {"status": "error", "feedback": f"Failed to perform detailed validation due to an internal error: {str(e)}."}
 
 # Tool for MarketResearcherAgent
 def get_research(topic: str) -> dict:

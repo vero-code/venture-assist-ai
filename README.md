@@ -1,24 +1,39 @@
 # Venture Assist AI
 
-This project is designed to participate in a hackathon.
+Smart AI assistant for startups. From idea to public presentation – multi-agent system on Google Cloud ADK (Agent Development Kit) leads you to success. The project is inspired by the tasks of the hackathon ["AI Agent Development Kit Hackathon with Google Cloud"](https://googlecloudmultiagents.devpost.com/).
 
-The current implementation is based on the example of working with Google Agent Development Kit (ADK), according to the official documentation.
+## Architecture
+
+At the top level, the **Coordinator/Dispatcher pattern** is used for the `venture_coordinator_agent`, which redirects the user to the appropriate specialized agents. The complete architecture will be shown in the final diagram.
+
 
 ## 📁 Structure
 
 ```
 venture-assist-ai/
-├── .gitignore
-├── .env.example             # Example environment variables
-├── README.md
 ├── backend/
-│   ├── src/
-│   │   ├── __init__.py      # Initialize the backend package
-│   │   ├── agents.py        # Definitions of agents
-│   │   ├── tools.py         # Definitions of instruments
-│   │   └── main.py          # Entry point for launching agents
-│   └── requirements.txt     # Dependencies
+│   ├── __init__.py          # Initialize the package
+│   ├── .env.example         # Environment variables
+│   ├── agent.py             # Agent coordinator
+│   ├── agents.py            # Subagents
+│   ├── config.py            # Constants of models
+│   ├── requirements.txt     # Dependencies
+│   └── tools.py             # Definitions of instruments
 └── frontend/
 │   └── ...
 └── multi_tool_agent/        # Example a simple agent
 ```
+
+## ✨ Features
+
+Total 7 agents (1 coordinator & 6 subagents):
+
+1️⃣ IdeaValidatorAgent		-> get_validator
+
+2️⃣ PitchDeckGeneratorAgent	-> get_pitch
+
+4️⃣ SummarySaverAgent		-> get_summary
+
+5️⃣ LogoCreatorAgent		-> get_logo
+
+6️⃣ MeetMakerAgent		    -> get_meeting
