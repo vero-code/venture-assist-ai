@@ -2,6 +2,8 @@
 from typing import Optional, List
 import google.generativeai as genai
 import json
+from google.adk.tools.tool_context import ToolContext
+import datetime
 from .config import (
     MODEL_GEMINI_FLASH,
     MODEL_GEMINI_PRO
@@ -188,11 +190,13 @@ def get_pitch(idea_summary: str, sections: Optional[List[str]] = None) -> str:
     return "".join(generated_content)
 
 # Tools for SummarySavingAgent
-def get_summary(content_to_summarize: str) -> str:
+def get_summary(content_to_summarize: str, tool_context: ToolContext) -> str:
     """
     Creates a brief, high-quality summary of the provided content using an LLM.
+    and stores it in the session state for later saving.
     Args:
         content_to_summarize (str): Long text or report to be summarized.
+        tool_context (ToolContext): ADK ToolContext for accessing session state.
     Returns:
         str: The condensed summary.
     """
@@ -220,40 +224,68 @@ def get_summary(content_to_summarize: str) -> str:
         response = model.generate_content(prompt)
         llm_summary = response.text
         print(f"--- Tool: LLM generated summary. ---")
+
+        # Save summary to session state
+        tool_context.state["last_summary"] = llm_summary
+        tool_context.state["last_summary_timestamp"] = datetime.datetime.now()
+        print(f"--- Tool: Summary saved to session state via tool_context. Current state: {tool_context.state} ---")
+
         return f"Summary: {llm_summary}"
 
     except Exception as e:
         print(f"--- Tool ERROR: Failed to generate summary. Error: {e} ---")
         return f"Error: Could not generate a summary due to an internal LLM error: {e}"
 
-def get_saver(content_to_save: str, file_name: Optional[str] = None) -> str:
+def get_saver(content_to_save: Optional[str] = None, file_name: Optional[str] = None, tool_context: ToolContext = None) -> str:
     """
-    Simulates saving content to Google Drive.
+    Simulates saving content to Google Drive. Prioritizes content from session state if available
+    and no explicit content_to_save is provided.
     Args:
-        content_to_save (str): The text content to be saved (e.g., a summary, report, or pitch deck).
+        content_to_save (str, optional): The text content to be saved. If None, attempts to use last_summary from state.
         file_name (str, optional): The preferred file name (e.g., "My_Summary.pdf"). If not provided, a default name will be generated.
+        tool_context (ToolContext, optional): ADK ToolContext for accessing session state. Required for stateful operations.
     Returns:
         str: Confirmation message with a mock Google Drive link.
     """
-    print(f"--- Tool: get_saver called for content length: {len(content_to_save)}, file_name: {file_name} ---")
+    print(f"--- Tool: get_saver called. Content provided directly: {content_to_save is not None}, file_name: {file_name} ---")
 
-    if not content_to_save or len(content_to_save) < 10:
-        return "Failed to save. No substantial content provided for saving."
+    actual_content_to_save = content_to_save
+
+    if tool_context is None:
+        return "Error: ToolContext not provided. Cannot access session state for saving."
+    
+    # if content_to_save is not provided, try to take it from the state via tool_context
+    if actual_content_to_save is None:
+        if tool_context.state.get("last_summary"):
+            actual_content_to_save = tool_context.state["last_summary"]
+            print(f"--- Tool: Using last_summary from session state (tool_context) for saving. ---")
+        else:
+            # If there is no direct content or summary in memory
+            return "Failed to save. No substantial content provided or found in session memory for saving. Please provide text or generate a summary first."
+    
+    if not actual_content_to_save or len(actual_content_to_save) < 10:
+        return "Failed to save. The content for saving is too short or empty."
 
     if not file_name:
-        safe_content_part = "".join(c for c in content_to_save[:30] if c.isalnum() or c.isspace()).strip().replace(" ", "_")
+        safe_content_part = "".join(c for c in actual_content_to_save[:30] if c.isalnum() or c.isspace()).strip().replace(" ", "_")
         if not safe_content_part: # Fallback if first part is non-alphanumeric
             safe_content_part = "document"
-        import datetime
+        
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         file_name = f"{safe_content_part}_{timestamp}.pdf"
 
         if len(file_name) > 100:
             file_name = file_name[:90] + ".pdf"
+        print(f"--- Tool: Generated file_name: {file_name} ---")
 
     # Simulate a Google Drive link
-    unique_hash = hash(file_name + content_to_save)
+    unique_hash = hash(file_name + actual_content_to_save)
     mock_drive_link = f"https://mock-drive.google.com/link/{unique_hash}/{file_name}"
+
+    # Clearing memory after saving via tool_context
+    tool_context.state["last_summary"] = None
+    tool_context.state["last_summary_timestamp"] = None
+    print(f"--- Tool: Session's last_summary memory cleared after saving via tool_context. Current state: {tool_context.state} ---")
 
     return f"Content successfully saved to Google Drive (simulated). You can access it via this link: {mock_drive_link}"
 

@@ -59,11 +59,17 @@ try:
     summary_saver_agent = Agent(
         name="SummarySaverAgent",
         model=MODEL_GEMINI_FLASH,
-        instruction="You are an agent responsible for summarizing text content and saving it to Google Drive. "
-                    "Use the 'get_summary' tool to generate concise summaries. "
-                    "Use the 'get_saver' tool to save any provided content, including summaries, to Google Drive. "
-                    "When asked to 'summarize and save', first use 'get_summary' and then immediately use 'get_saver' with the generated summary.",
-        description="An agent for summarizing and saving content.",
+        instruction=(
+            "You are an agent responsible for summarizing text content and saving it to Google Drive. "
+            "Use the 'get_summary' tool to generate concise summaries. "
+            "After generating a summary, it will be stored in your internal state (session memory). "
+            "Use the 'get_saver' tool to save any provided content, or the last generated summary from your state, to Google Drive. "
+            "When asked to 'summarize and save', first use 'get_summary' and then immediately use 'get_saver' with the generated summary. "
+            "When asked to 'save the summary' or 'save it' without providing new content, check your internal state for the last generated summary and save that. "
+            "If there is no summary in the state, you must instruct the user to first ask you to 'summarize idea:...' before asking to save."
+            "Always confirm with the user after completing a task."
+        ),
+        description="An agent for summarizing and saving content with memory of the last summary.",
         tools=[get_summary, get_saver]
     )
     print(f"✅ Sub-Agent '{summary_saver_agent.name}' redefined.")
