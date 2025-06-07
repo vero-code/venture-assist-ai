@@ -65,11 +65,21 @@ Total 7 agents (1 coordinator & 6 subagents):
    - **User Benefit:** Confirms meeting details and suggests next steps for scheduling.
 
 
-## 💾 Agent Memory
+### 💾 Agent Memory
 
 The memory of the `SummarySaverAgent` is implemented via `ToolContext`, which provides an interface for interacting with the session state (`tool_context.state`). `SessionService` physically ensures the persistence of this state.
 
 Thus, after summarization, the `last_summary` is stored in `tool_context.state`, and upon a subsequent save request, the agent utilizes this information either directly from arguments passed by the LLM or by accessing `tool_context.state["last_summary"]`.
+
+
+### 🔒 Authorization moment
+
+Implemented Google's basic authorization mechanism using two endpoints:
+
+- `/auth/google` initiates the Google authorization process and redirects the user to the consent page.
+
+- `/oauth2callback` accepts the authorization code from Google, exchanges it for access and refresh tokens, and then stores them.
+
 
 ## 🔬 Testing
 

@@ -1,30 +1,75 @@
 // frontend/src/App.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 function App() {
   const [userQuery, setUserQuery] = useState('');
   const [aiResponse, setAiResponse] = useState('');
+  const [authStatus, setAuthStatus] = useState('');
+
+  const BACKEND_URL = 'http://localhost:8080';
+  const GOOGLE_AUTH_URL = `${BACKEND_URL}/auth/google`;
+  
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get('auth_status');
+    const error = params.get('error');
+
+    if (status === 'success') {
+      setAuthStatus('Google Connected Successfully! You can now use AI features.');
+      
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (status === 'failed') {
+      setAuthStatus(`Google Connection Failed: ${error || 'Unknown error'}. Please try again.`);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   const handleQueryChange = (event) => {
     setUserQuery(event.target.value);
   };
 
-  const handleSubmitQuery = () => {
-    setAiResponse("AI is thinking... (This is a placeholder response)");
-    console.log("Processing query:", userQuery);
+  const handleSubmitQuery = async () => {
+    setAiResponse("AI is thinking...");
+
+    try {
+      const response = await fetch(BACKEND_URL + '/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query: userQuery }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setAiResponse(data.response);
+      setUserQuery('');
+    } catch (error) {
+      console.error("Error sending query to backend:", error);
+      setAiResponse("Error: Could not get response from AI. Please try again later.");
+    }
   };
 
   const handleConnectGoogle = () => {
-    const googleAuthUrl = 'http://localhost:8080/auth/google';
+    const googleAuthUrl = GOOGLE_AUTH_URL;
     window.location.href = googleAuthUrl;
   };
 
   return (
     <div className="flex flex-col items-center pt-30 min-h-screen bg-gray-100">
       <h1 className="text-3xl font-bold underline">Venture Assist AI</h1>
-        <p className="text-lg text-gray-600 mt-4 max-w-md text-center">
-          Your AI partner for all venture needs: from idea to pitch, marketing to meetings.
-        </p>
+      <p className="text-lg text-gray-600 mt-4 max-w-md text-center">
+        Your AI partner for all venture needs: from idea to pitch, marketing to meetings.
+      </p>
+
+      {authStatus && (
+        <div className={`mt-4 p-3 rounded-lg ${authStatus.includes('Failed') ? 'bg-red-200 text-red-800' : 'bg-green-200 text-green-800'}`}>
+          {authStatus}
+        </div>
+      )}
 
       <div className="max-w-xl mx-auto mt-10 p-6 bg-white rounded-2xl shadow-lg">
         <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">How can I help you today?</h2>

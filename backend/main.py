@@ -5,6 +5,8 @@ from fastapi.responses import RedirectResponse
 from dotenv import load_dotenv
 import google.auth.transport.requests
 from google_auth_oauthlib.flow import Flow
+from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
@@ -23,7 +25,16 @@ FRONTEND_URL = os.getenv("FRONTEND_URL")
 if not FRONTEND_URL:
     raise ValueError("FRONTEND_URL is not set in environment variables. Please check your .env file.")
 
-# TDefine Google API scopes required by the application.
+origins = [FRONTEND_URL]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 SCOPES = [
     "https://www.googleapis.com/auth/drive.file"
 ]
@@ -36,6 +47,10 @@ user_tokens_store = {}
 # Placeholder user ID for the MVP/hackathon.
 # In a real application, this would come from a user authentication system.
 TEST_USER_ID = "some_unique_user_id_for_testing"
+
+# Pydantic model for incoming chat requests
+class ChatRequest(BaseModel):
+    query: str
 
 @app.get("/")
 async def read_root():
@@ -143,3 +158,15 @@ async def oauth2callback(request: Request):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to exchange authorization code: {e}"
         )
+
+@app.post("/chat")
+async def chat_with_ai(request: ChatRequest):
+    """
+    Processes user queries and returns AI responses.
+    This is where agent orchestration logic will go.
+    """
+    user_query = request.query
+
+    ai_response = f"Received your query: '{user_query}'. AI is processing... (Placeholder response)"
+
+    return {"response": ai_response}
