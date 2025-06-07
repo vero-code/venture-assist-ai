@@ -43,6 +43,7 @@ Total 7 agents (1 coordinator & 6 subagents):
 4️⃣ **SummarySaverAgent** -> `get_summary`
    - **Capabilities:** Summarizes provided lengthy text.
    - **User Benefit:** Delivers a concise and informative summary of large documents.
+   - **Improvement:** Avoids unnecessary LLM calls for trivial cases using length check.
 
 5️⃣ **LogoCreatorAgent** -> `get_logo`
    - **Capabilities:** Generates a logo concept for a startup idea.
@@ -51,3 +52,13 @@ Total 7 agents (1 coordinator & 6 subagents):
 6️⃣ **MeetMakerAgent** -> `get_meeting`
    - **Capabilities:** Organizes a meeting with a specified participant.
    - **User Benefit:** Confirms meeting details and suggests next steps for scheduling.
+
+## 🔬 Testing
+
+### SummarySaverAgent
+
+-> get_summary
+Query: `Summarize idea: An idea came to me, it seems a bit crazy, but the more I think about it, the more I like it. What if we make a smart mirror that helps track your mental state? Like, in the morning and in the evening you just go to the mirror, and it, looking at your facial expression, listening to your voice, intonation, evaluating your reactions, notices if you are burnt out, depressed or just tired. And it can gently suggest: "do a breathing practice", "try to rest a little", or even "it's time to talk to someone". Everything is local or encrypted. It's like a caring AI assistant, but not intrusive.`
+
+-> get_summary + get_saver
+Query: `Create summary and save: Listen, I have a cool idea. Why not make personalized tea based on DNA? Like, a person takes a simple test (like for genetics - saliva), plus fills out a questionnaire: how he sleeps, what he does, what flavors he likes. And then AI or an algorithm selects a tea blend for him - with the right herbs, vitamins, flavors and even the effect (calming, energy, recovery, etc.). You can do it as a subscription: every month a person gets "his" tea. It's like genetics + healthy lifestyle + a bit of a geek.`

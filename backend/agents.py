@@ -5,6 +5,7 @@ from .tools import (
     get_research,
     get_pitch,
     get_summary,
+    get_saver,
     get_logo,
     get_meeting
 )
@@ -58,9 +59,12 @@ try:
     summary_saver_agent = Agent(
         name="SummarySaverAgent",
         model=MODEL_GEMINI_FLASH,
-        instruction="You are an agent responsible for collecting all necessary summaries, summarizing them, and saving them. Use only the 'get_summary' tool to process content.",
-        description="An agent for summarizing content.",
-        tools=[get_summary]
+        instruction="You are an agent responsible for summarizing text content and saving it to Google Drive. "
+                    "Use the 'get_summary' tool to generate concise summaries. "
+                    "Use the 'get_saver' tool to save any provided content, including summaries, to Google Drive. "
+                    "When asked to 'summarize and save', first use 'get_summary' and then immediately use 'get_saver' with the generated summary.",
+        description="An agent for summarizing and saving content.",
+        tools=[get_summary, get_saver]
     )
     print(f"✅ Sub-Agent '{summary_saver_agent.name}' redefined.")
 except Exception as e:

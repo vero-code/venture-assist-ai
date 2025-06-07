@@ -187,7 +187,7 @@ def get_pitch(idea_summary: str, sections: Optional[List[str]] = None) -> str:
 
     return "".join(generated_content)
 
-# Tool for SummarySavingAgent
+# Tools for SummarySavingAgent
 def get_summary(content_to_summarize: str) -> str:
     """
     Creates a brief, high-quality summary of the provided content using an LLM.
@@ -197,6 +197,10 @@ def get_summary(content_to_summarize: str) -> str:
         str: The condensed summary.
     """
     print(f"--- Tool: get_summary called for content length: {len(content_to_summarize)} ---")
+
+    MIN_CONTENT_LENGTH = 50 # Minimum number of characters for summarization
+    if len(content_to_summarize) < MIN_CONTENT_LENGTH:
+        return f"Summary: The provided content is too short (less than {MIN_CONTENT_LENGTH} characters) to generate a meaningful summary. Content received: '{content_to_summarize}'"
 
     try:
         model = genai.GenerativeModel(MODEL_GEMINI_FLASH)
@@ -221,6 +225,37 @@ def get_summary(content_to_summarize: str) -> str:
     except Exception as e:
         print(f"--- Tool ERROR: Failed to generate summary. Error: {e} ---")
         return f"Error: Could not generate a summary due to an internal LLM error: {e}"
+
+def get_saver(content_to_save: str, file_name: Optional[str] = None) -> str:
+    """
+    Simulates saving content to Google Drive.
+    Args:
+        content_to_save (str): The text content to be saved (e.g., a summary, report, or pitch deck).
+        file_name (str, optional): The preferred file name (e.g., "My_Summary.pdf"). If not provided, a default name will be generated.
+    Returns:
+        str: Confirmation message with a mock Google Drive link.
+    """
+    print(f"--- Tool: get_saver called for content length: {len(content_to_save)}, file_name: {file_name} ---")
+
+    if not content_to_save or len(content_to_save) < 10:
+        return "Failed to save. No substantial content provided for saving."
+
+    if not file_name:
+        safe_content_part = "".join(c for c in content_to_save[:30] if c.isalnum() or c.isspace()).strip().replace(" ", "_")
+        if not safe_content_part: # Fallback if first part is non-alphanumeric
+            safe_content_part = "document"
+        import datetime
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        file_name = f"{safe_content_part}_{timestamp}.pdf"
+
+        if len(file_name) > 100:
+            file_name = file_name[:90] + ".pdf"
+
+    # Simulate a Google Drive link
+    unique_hash = hash(file_name + content_to_save)
+    mock_drive_link = f"https://mock-drive.google.com/link/{unique_hash}/{file_name}"
+
+    return f"Content successfully saved to Google Drive (simulated). You can access it via this link: {mock_drive_link}"
 
 # Tool for LogoCreatorAgent
 def get_logo(idea_description: str) -> str:
