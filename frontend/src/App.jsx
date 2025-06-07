@@ -14,6 +14,11 @@ function App() {
     console.log("Processing query:", userQuery);
   };
 
+  const handleConnectGoogle = () => {
+    const googleAuthUrl = 'http://localhost:8080/auth/google';
+    window.location.href = googleAuthUrl;
+  };
+
   return (
     <div className="flex flex-col items-center pt-30 min-h-screen bg-gray-100">
       <h1 className="text-3xl font-bold underline">Venture Assist AI</h1>
@@ -35,6 +40,13 @@ function App() {
           onClick={handleSubmitQuery}
         >
           Get AI Assistance
+        </button>
+
+        <button
+          className="mt-4 w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-xl transition-all"
+          onClick={handleConnectGoogle}
+        >
+          Connect Google
         </button>
       </div>
 
