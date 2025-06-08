@@ -8,6 +8,7 @@ from .config import (
     MODEL_GEMINI_FLASH,
     MODEL_GEMINI_PRO
 )
+import requests
 
 # --- Tool Function Definitions ---
 # Each function represents a core operation for its corresponding agent.
@@ -238,15 +239,11 @@ def get_summary(content_to_summarize: str, tool_context: ToolContext) -> str:
 
 def get_saver(content_to_save: Optional[str] = None, file_name: Optional[str] = None, tool_context: ToolContext = None) -> str:
     """
-    Simulates saving content to Google Drive. Prioritizes content from session state if available
-    and no explicit content_to_save is provided.
-    Args:
-        content_to_save (str, optional): The text content to be saved. If None, attempts to use last_summary from state.
-        file_name (str, optional): The preferred file name (e.g., "My_Summary.pdf"). If not provided, a default name will be generated.
-        tool_context (ToolContext, optional): ADK ToolContext for accessing session state. Required for stateful operations.
-    Returns:
-        str: Confirmation message with a mock Google Drive link.
+    Saves content to Google Drive using provided credentials.
+    Prioritizes content from session state if available and no explicit content_to_save is provided.
     """
+    from .main import user_tokens_store, TEST_USER_ID
+
     print(f"--- Tool: get_saver called. Content provided directly: {content_to_save is not None}, file_name: {file_name} ---")
 
     actual_content_to_save = content_to_save
@@ -272,22 +269,50 @@ def get_saver(content_to_save: Optional[str] = None, file_name: Optional[str] = 
             safe_content_part = "document"
         
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        file_name = f"{safe_content_part}_{timestamp}.pdf"
+        file_name = f"{safe_content_part}_{timestamp}.txt"
 
         if len(file_name) > 100:
-            file_name = file_name[:90] + ".pdf"
+            file_name = file_name[:90] + ".txt"
         print(f"--- Tool: Generated file_name: {file_name} ---")
 
-    # Simulate a Google Drive link
-    unique_hash = hash(file_name + actual_content_to_save)
-    mock_drive_link = f"https://mock-drive.google.com/link/{unique_hash}/{file_name}"
+    tokens = user_tokens_store.get(TEST_USER_ID)
+    if not tokens or "token" not in tokens:
+        return "Error: No valid Google access token. Please authorize via /auth/google."
 
-    # Clearing memory after saving via tool_context
-    tool_context.state["last_summary"] = None
-    tool_context.state["last_summary_timestamp"] = None
-    print(f"--- Tool: Session's last_summary memory cleared after saving via tool_context. Current state: {tool_context.state} ---")
+    access_token = tokens["token"]
 
-    return f"Content successfully saved to Google Drive (simulated). You can access it via this link: {mock_drive_link}"
+    metadata = {
+        'name': file_name,
+        'mimeType': 'text/plain'
+    }
+
+    files = {
+        'metadata': ('metadata', json.dumps(metadata), 'application/json'),
+        'file': (file_name, actual_content_to_save, 'text/plain')
+    }
+
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+
+    try:
+        upload_url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart'
+        response = requests.post(upload_url, headers=headers, files=files)
+        response.raise_for_status()
+        file_id = response.json().get('id')
+
+        tool_context.state["last_summary"] = None
+        tool_context.state["last_summary_timestamp"] = None
+        print(f"--- Tool: Cleared session state after saving. ---")
+
+        if file_id:
+            return f"✅ Saved to Google Drive: https://drive.google.com/file/d/{file_id}/view"
+        else:
+            return "⚠️ Upload succeeded but file ID was not returned."
+
+    except Exception as e:
+        print(f"❌ Upload error: {e}")
+        return f"❌ Failed to upload to Google Drive: {e}"
 
 # Tool for LogoCreatorAgent
 def get_logo(idea_description: str) -> str:
