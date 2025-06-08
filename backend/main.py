@@ -3,50 +3,62 @@ import os
 from fastapi import FastAPI, HTTPException, status, Request
 from fastapi.responses import RedirectResponse
 from dotenv import load_dotenv
-import google.auth.transport.requests
-from google_auth_oauthlib.flow import Flow
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
-load_dotenv()
+from .agent import root_agent
+from google.adk.runners import Runner
+from google.adk.sessions import InMemorySessionService
+from google.adk.agents.run_config import RunConfig, StreamingMode
+from google.genai.types import Content, Part
 
-app = FastAPI()
+load_dotenv()
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI")
 GOOGLE_PROJECT_ID = os.getenv("GOOGLE_PROJECT_ID")
+FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 if not all([GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI, GOOGLE_PROJECT_ID]):
     raise ValueError("Google API credentials are not set in environment variables. Please check your .env file.")
 
-FRONTEND_URL = os.getenv("FRONTEND_URL")
-
 if not FRONTEND_URL:
     raise ValueError("FRONTEND_URL is not set in environment variables. Please check your .env file.")
 
-origins = [FRONTEND_URL]
-
+app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=[FRONTEND_URL],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-SCOPES = [
-    "https://www.googleapis.com/auth/drive.file"
-]
+APP_NAME = "venture_assist_ai"
+SESSION_ID = "default_session"
+TEST_USER_ID = "test_user"
 
-# In-memory store for user tokens (for MVP/hackathon demo).
-# In production, this would be a persistent database (e.g., PostgreSQL, Redis)
-# mapping user_id to their Google tokens.
+session_service = InMemorySessionService()
+runner = Runner(
+    agent=root_agent,
+    app_name=APP_NAME,
+    session_service=session_service
+)
+
+@app.on_event("startup")
+async def startup_event():
+    try:
+        await session_service.get_session(APP_NAME, TEST_USER_ID, SESSION_ID)
+    except Exception:
+        await session_service.create_session(
+            app_name=APP_NAME,
+            user_id=TEST_USER_ID,
+            session_id=SESSION_ID
+        )
+
+SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 user_tokens_store = {}
-
-# Placeholder user ID for the MVP/hackathon.
-# In a real application, this would come from a user authentication system.
-TEST_USER_ID = "some_unique_user_id_for_testing"
 
 # Pydantic model for incoming chat requests
 class ChatRequest(BaseModel):
@@ -56,17 +68,37 @@ class ChatRequest(BaseModel):
 async def read_root():
     return {"message": "Venture Assist AI Backend is running!"}
 
+@app.post("/chat")
+async def chat_with_ai(request: ChatRequest):
+    """
+    Processes user queries and returns AI responses.
+    """
+    try:
+        run_config = RunConfig(streaming_mode=StreamingMode.NONE, max_llm_calls=100)
+        content = Content(role="user", parts=[Part(text=request.query)])
+
+        async for event in runner.run_async(
+            user_id=TEST_USER_ID,
+            session_id=SESSION_ID,
+            new_message=content,
+            run_config=run_config
+        ):
+            if event.is_final_response():
+                return {"response": event.content.parts[0].text}
+
+        raise HTTPException(status_code=500, detail="No final response from agent.")
+    
+    except Exception as e:
+        print(f"❌ Error in root agent: {e}")
+        raise HTTPException(status_code=500, detail="Agent failed to process your query.")
+
 @app.get("/auth/google")
 async def google_auth():
     """
     Initiates Google's OAuth flow.
     Redirects the user to Google's consent page.
     """
-    if not all([GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI]):
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Google API credentials are not set in environment variables."
-        )
+    from google_auth_oauthlib.flow import Flow
 
     flow = Flow.from_client_config(
         {
@@ -85,13 +117,9 @@ async def google_auth():
     )
 
     authorization_url, state = flow.authorization_url(
-        access_type='offline',  # Request a refresh token for long-term access
+        access_type='offline',
         include_granted_scopes='true'
     )
-
-    # Note: For production, the 'state' parameter must be saved in the user's session
-    # and validated upon return from /oauth2callback to prevent CSRF attacks.
-    # This is omitted for simplicity in this MVP example.
 
     return RedirectResponse(authorization_url)
 
@@ -101,6 +129,8 @@ async def oauth2callback(request: Request):
     Handles the redirect from Google after successful authorization.
     Exchanges the authorization code for access and refresh tokens, then stores them.
     """
+    from google_auth_oauthlib.flow import Flow
+
     code = request.query_params.get("code")
     error = request.query_params.get("error")
 
@@ -132,12 +162,8 @@ async def oauth2callback(request: Request):
 
     try:
         flow.fetch_token(code=code)
-
         credentials = flow.credentials
 
-        # Store tokens in the in-memory dictionary.
-        # In a production application, these would be securely stored in a database
-        # associated with the authenticated user's ID.
         user_tokens_store[TEST_USER_ID] = {
             "token": credentials.token,
             "refresh_token": credentials.refresh_token,
@@ -147,8 +173,6 @@ async def oauth2callback(request: Request):
             "scopes": credentials.scopes,
             "expiry": credentials.expiry.isoformat()
         }
-        
-        print(f"Tokens successfully saved for user {TEST_USER_ID}.")
 
         return RedirectResponse(url=FRONTEND_URL + "/?auth_status=success")
 
@@ -158,15 +182,3 @@ async def oauth2callback(request: Request):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to exchange authorization code: {e}"
         )
-
-@app.post("/chat")
-async def chat_with_ai(request: ChatRequest):
-    """
-    Processes user queries and returns AI responses.
-    This is where agent orchestration logic will go.
-    """
-    user_query = request.query
-
-    ai_response = f"Received your query: '{user_query}'. AI is processing... (Placeholder response)"
-
-    return {"response": ai_response}

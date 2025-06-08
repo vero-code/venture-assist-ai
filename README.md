@@ -12,16 +12,18 @@ At the top level, the **Coordinator/Dispatcher pattern** is used for the `ventur
 ```
 venture-assist-ai/
 ├── backend/
-│   ├── __init__.py          # Initialize the package
-│   ├── .env.example         # Environment variables
-│   ├── agent.py             # Agent coordinator
-│   ├── agents.py            # Subagents
-│   ├── config.py            # Constants of models
-│   ├── requirements.txt     # Dependencies
-│   └── tools.py             # Definitions of instruments
-└── frontend/
+│   ├── __init__.py        # Initialize the package
+│   ├── agent.py           # Agent coordinator
+│   ├── agents.py          # Subagents
+│   ├── config.py          # Constants of models
+│   ├── main.py            # Entry point
+│   ├── requirements.txt   # Dependencies
+│   └── tools.py           # Definitions of instruments
+├── frontend/
 │   └── ...
-└── multi_tool_agent/        # Example a simple agent
+├── multi_tool_agent/      # Example a simple agent
+│   └── ...
+└── .env.example           # Environment variables
 ```
 
 ## ✨ Features
