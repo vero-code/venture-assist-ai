@@ -3,12 +3,16 @@ from typing import Optional, List
 import google.generativeai as genai
 import json
 from google.adk.tools.tool_context import ToolContext
-import datetime
+from datetime import datetime, timezone
 from .config import (
     MODEL_GEMINI_FLASH,
     MODEL_GEMINI_PRO
 )
 import requests
+from .state import user_tokens_store, TEST_USER_ID
+import traceback
+
+GOOGLE_CALENDAR_API_ENDPOINT = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
 
 # --- Tool Function Definitions ---
 # Each function represents a core operation for its corresponding agent.
@@ -355,60 +359,108 @@ def get_logo(idea_description: str) -> str:
         return f"Error generating logo concept: {e}"
 
 # Tool for MeetMakerAgent
-def get_meeting(purpose: str, participant_email: str, preferred_date: str = "") -> str:
+def extract_meeting_slots(preferred_date: str, model_name: str = MODEL_GEMINI_FLASH) -> list:
+    now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    prompt = (
+        f"You are an assistant helping to schedule meetings. The current date and time is: {now_utc}.\n"
+        f"The user wants to schedule a meeting on '{preferred_date}'.\n"
+        "Generate 2–3 time slots in the future, in UTC timezone, each exactly 1 hour long.\n"
+        "Use ISO 8601 format, and make sure all slots are after the current time.\n"
+        "Example:\n"
+        "- 2025-06-15T10:00:00Z to 2025-06-15T11:00:00Z\n"
+        "- 2025-06-16T14:00:00Z to 2025-06-16T15:00:00Z\n"
+        "Only return the list. No explanation."
+    )
+
+    try:
+        model = genai.GenerativeModel(model_name)
+        response = model.generate_content(prompt)
+        slots = [line.strip("- ").strip() for line in response.text.splitlines() if line.startswith("-")]
+        print(f"--- Tool: Extracted slots: {slots} ---")
+        return slots
+    except Exception as e:
+        print(f"❌ Error extracting time slots: {e}")
+        return []
+
+def get_meeting(purpose: str, participant_email: str, preferred_date: str) -> str:
     """
-    Organizes a meeting (e.g., with an investor) for the specified purpose and participant.
-    Uses an LLM to generate a realistic confirmation message and suggest next steps.
-    Args:
-        purpose (str): The purpose of the meeting (e.g., "Investor meeting", "Project discussion").
-        participant_email (str): The email of the participant with whom to organize the meeting.
-        preferred_date (str, optional): Preferred date for the meeting (e.g., "tomorrow", "next week", "June 10th").
-                                        Defaults to an empty string, implying flexibility.
-    Returns:
-        str: Confirmation of meeting organization or a request for clarification.
+    Schedules a real meeting in Google Calendar with Google Meet link.
     """
     print(f"--- Tool: get_meeting called for purpose: {purpose}, participant: {participant_email}, preferred_date: '{preferred_date}' ---")
 
     if "@" not in participant_email or "." not in participant_email:
         print(f"--- Tool: Invalid email format for participant: {participant_email} ---")
         return "Failed to organize meeting. Please ensure a valid participant email is provided (e.g., 'name@example.com')."
+
+    slots = extract_meeting_slots(preferred_date)
+    print(f"--- Tool: Extracted slots: {slots} ---")
+    if not slots:
+        return "❌ Failed to interpret the preferred date. Please try a more specific one."
     
     try:
-        model = genai.GenerativeModel(MODEL_GEMINI_FLASH)
+        first_slot = slots[0]
+        start_str, end_str = [s.strip() for s in first_slot.split("to")]
+        start_dt = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
+        end_dt = datetime.fromisoformat(end_str.replace("Z", "+00:00"))
+        print(f"--- Tool: Parsed times: {start_dt} to {end_dt} ---")
+    except Exception as e:
+        return f"❌ Failed to parse generated time slot: {e}"
+    
+    tokens = user_tokens_store.get(TEST_USER_ID)
+    if not tokens or "token" not in tokens:
+        return "❌ No valid Google access token. Please authorize via /auth/google."
+    
+    access_token = tokens["token"]
 
-        prompt_parts = [
-            f"You are a meeting scheduling assistant. Generate a confirmation message for organizing a meeting.",
-            f"The meeting purpose is: '{purpose}'.",
-            f"The participant is: '{participant_email}'.",
-        ]
+    event_data = {
+        "summary": purpose,
+        "description": f"Meeting with {participant_email}",
+        "start": {"dateTime": start_dt.isoformat(), "timeZone": "UTC"},
+        "end": {"dateTime": end_dt.isoformat(), "timeZone": "UTC"},
+        "attendees": [{"email": participant_email}],
+        "conferenceData": {
+            "createRequest": {
+                "requestId": f"meet-{datetime.utcnow().timestamp()}",
+                "conferenceSolutionKey": {"type": "hangoutsMeet"}
+            }
+        },
+    }
 
-        if preferred_date:
-            prompt_parts.append(f"The preferred date is: '{preferred_date}'.")
-            prompt_parts.append(
-                "Based on the preferred date, suggest 2-3 potential time slots. "
-                "If the date is general (e.g., 'next week'), suggest slots within that general timeframe. "
-                "Make the suggestions realistic, e.g., 'Monday, June 10th at 10 AM EEST' or 'Tuesday, June 11th at 2 PM EEST'."
-            )
-        else:
-            prompt_parts.append(
-                "No specific date preferred. Suggest a few general options for next steps, "
-                "e.g., asking for participant's availability."
-            )
-        
-        prompt_parts.append(
-            "The message should be polite, professional, and clearly state the next steps (e.g., 'Awaiting confirmation' or 'Please confirm availability')."
-            "Do not include any salutations (like 'Dear...') or closings (like 'Sincerely...'). Start directly with the confirmation."
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+
+    params = {"conferenceDataVersion": 1}
+    
+    try:
+        response = requests.post(
+            GOOGLE_CALENDAR_API_ENDPOINT,
+            headers=headers,
+            params=params,
+            data=json.dumps(event_data)
         )
 
-        final_prompt = "\n".join(prompt_parts)
+        print(f"--- Tool: Calendar API response code: {response.status_code} ---")
+        print(f"--- Tool: Calendar API raw response: {response.text} ---")
 
-        print(f"--- Tool: Calling LLM for meeting confirmation with model: {MODEL_GEMINI_FLASH} ---")
-        response = model.generate_content(final_prompt)
-        meeting_confirmation_message = response.text
-        print(f"--- Tool: LLM generated meeting confirmation. ---")
+        response.raise_for_status()
+        event = response.json()
 
-        return meeting_confirmation_message
+        meet_link = event.get("hangoutLink")
+        if not meet_link and "conferenceData" in event:
+            entry_points = event["conferenceData"].get("entryPoints", [])
+            for entry in entry_points:
+                if entry.get("entryPointType") == "video":
+                    meet_link = entry.get("uri")
+                    break
+
+        print("--- Tool: Full event created ---")
+        print(json.dumps(event, indent=2))
+        return f"✅ Meeting scheduled on {start_dt} with {participant_email}. Google Meet link: {meet_link or '[None]'}"
 
     except Exception as e:
+        traceback.print_exc()
         print(f"--- Tool ERROR: Failed to generate meeting confirmation for '{participant_email}'. Error: {e} ---")
         return f"An error occurred while trying to organize the meeting: {e}. Please try again later."

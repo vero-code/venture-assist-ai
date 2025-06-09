@@ -7,6 +7,14 @@ Smart AI assistant for startups. From idea to public presentation – multi-agen
 At the top level, the **Coordinator/Dispatcher pattern** is used for the `venture_coordinator_agent`, which redirects the user to the appropriate specialized agents. The complete architecture will be shown in the final diagram.
 
 
+## 🗨️ Google Services
+
+- Google AI Studio API
+- Google AOuth
+- Google Calendar
+- Google Meet
+
+
 ## 📁 Structure
 
 ```
@@ -18,6 +26,7 @@ venture-assist-ai/
 │   ├── config.py          # Constants of models
 │   ├── main.py            # Entry point
 │   ├── requirements.txt   # Dependencies
+│   ├── state.py           # To store state
 │   └── tools.py           # Definitions of instruments
 ├── frontend/
 │   └── ...
@@ -64,7 +73,7 @@ Total 7 agents (1 coordinator & 6 subagents):
 
 6️⃣ **MeetMakerAgent** -> `get_meeting`
    - **Capabilities:** Organizes a meeting with a specified participant.
-   - **User Benefit:** Confirms meeting details and suggests next steps for scheduling.
+   - **User Benefit:** Extracts a date from the user input and writes the meeting to the calendar.
 
 
 ### 💾 Agent Memory
@@ -83,6 +92,17 @@ Implemented Google's basic authorization mechanism using two endpoints:
 - `/oauth2callback` accepts the authorization code from Google, exchanges it for access and refresh tokens, and then stores them.
 
 
+### 🎥 Meet Planning
+
+`MeetMakerAgent` uses the `get_meeting` tool, which calls `extract_meeting_slots` — a function powered by an LLM to propose meeting times.
+
+Then Google services come into play:
+
+- `Google Calendar` is used to create the event.
+
+- `Google Meet` is enabled automatically via the Calendar API when ads conference Data.
+
+
 ## 🔬 Testing
 
 ### SummarySaverAgent
@@ -98,3 +118,10 @@ Query: `Can you save it?`
 -> get_summary + get_saver
 
 Query: `Create summary and save: Listen, I have a cool idea. Why not make personalized tea based on DNA? Like, a person takes a simple test (like for genetics - saliva), plus fills out a questionnaire: how he sleeps, what he does, what flavors he likes. And then AI or an algorithm selects a tea blend for him - with the right herbs, vitamins, flavors and even the effect (calming, energy, recovery, etc.). You can do it as a subscription: every month a person gets "his" tea. It's like genetics + healthy lifestyle + a bit of a geek.`
+
+
+### MeetMakerAgent
+
+-> get_meeting
+
+Query: `Arrange a meeting with _@gmail.com next week to discuss the startup`

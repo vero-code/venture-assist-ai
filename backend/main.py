@@ -11,6 +11,7 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.genai.types import Content, Part
+from .state import user_tokens_store, TEST_USER_ID
 
 load_dotenv()
 
@@ -37,7 +38,6 @@ app.add_middleware(
 
 APP_NAME = "venture_assist_ai"
 SESSION_ID = "default_session"
-TEST_USER_ID = "test_user"
 
 session_service = InMemorySessionService()
 runner = Runner(
@@ -57,8 +57,11 @@ async def startup_event():
             session_id=SESSION_ID
         )
 
-SCOPES = ["https://www.googleapis.com/auth/drive.file"]
-user_tokens_store = {}
+SCOPES = [
+    "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/calendar.events",
+    "https://www.googleapis.com/auth/calendar"
+]
 
 # Pydantic model for incoming chat requests
 class ChatRequest(BaseModel):
