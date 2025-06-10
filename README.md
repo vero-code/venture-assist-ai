@@ -8,9 +8,9 @@ Smart AI assistant for startups. From idea to public presentation – multi-agen
 At the top level, the **Coordinator/Dispatcher pattern** is used for the `venture_coordinator_agent`, which redirects the user to the appropriate specialized agents. The complete architecture will be shown in the final diagram.
 
 
-## Technologies
+## ⚒️ Technologies
 
-- ADK ([Agent Development Kit](https://google.github.io/adk-docs/)), thanks [API documentation](https://google.github.io/adk-docs/api-reference/python/index.html)
+- ADK (Agent Development Kit)
 - Google Cloud SDK
 - Python v3.13.4, Uvicorn
 - Node.js v22.16.0
@@ -25,6 +25,15 @@ At the top level, the **Coordinator/Dispatcher pattern** is used for the `ventur
 - Google Calendar
 - Google Meet
 - Google Slides
+
+
+### 📗 Documentation
+
+- [Agent Development Kit](https://google.github.io/adk-docs/)
+
+- [ADK submodules documentation](https://google.github.io/adk-docs/api-reference/python/index.html)
+
+- [ADK Tutorial - Progressive Weather Bot (ADK Tools Version)](https://github.com/google/adk-docs/tree/main/examples/python/tutorial/agent_team/adk-tutorial)
 
 
 ## 📁 Structure
@@ -236,6 +245,49 @@ Schedule a project discussion with alice@company.com for June 15th.
 Query:
 ```
 Organize an investor meeting with bob@example.com for tomorrow.
+```
+
+
+## How to run
+
+1. Configure access:
+
+Create `.env` (see example in `.env.example`).
+
+2. Authorize via Google OAuth 2.0:
+
+```
+gcloud auth application-default login
+```
+
+> Be sure to check the all boxes.
+
+3. Run backend:
+
+```
+python -m venv .venv
+.venv\Scripts\Activate.ps1   # for Windows PowerShell
+pip install -r backend/requirements.txt
+```
+
+If want to testing agents via UI Google Agent:
+
+```
+adk web
+```
+
+For local server using frontend:
+
+```
+uvicorn backend.main:app --reload --port 8080
+```
+
+4. Start frontend:
+
+```
+cd frontend
+npm install
+npm run dev
 ```
 
 
