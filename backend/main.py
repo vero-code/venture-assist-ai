@@ -60,7 +60,8 @@ async def startup_event():
 SCOPES = [
     "https://www.googleapis.com/auth/drive.file",
     "https://www.googleapis.com/auth/calendar.events",
-    "https://www.googleapis.com/auth/calendar"
+    "https://www.googleapis.com/auth/calendar",
+    "https://www.googleapis.com/auth/presentations"
 ]
 
 # Pydantic model for incoming chat requests

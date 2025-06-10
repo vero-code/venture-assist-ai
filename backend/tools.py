@@ -11,8 +11,14 @@ from .config import (
 import requests
 from .state import user_tokens_store, TEST_USER_ID
 import traceback
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+import uuid
+import json
+from google.oauth2.credentials import Credentials
 
 GOOGLE_CALENDAR_API_ENDPOINT = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+GOOGLE_SLIDES_URL = 'https://docs.google.com/presentation/d'
 
 # --- Tool Function Definitions ---
 # Each function represents a core operation for its corresponding agent.
@@ -321,42 +327,92 @@ def get_saver(content_to_save: Optional[str] = None, file_name: Optional[str] = 
 # Tool for LogoCreatorAgent
 def get_logo(idea_description: str) -> str:
     """
-    Generates a creative concept and a placeholder URL for a logo based on the startup idea description,
-    using an LLM to craft the concept.
-    Args:
-        idea_description (str): Description of the startup idea for logo creation.
-    Returns:
-        str: Description of the generated logo concept and its preview URL.
+    Generates a logo concept using Gemini and creates a Google Slides slide for visual representation.
     """
     print(f"--- Tool: get_logo called for idea: {idea_description} ---")
 
     try:
         model = genai.GenerativeModel(MODEL_GEMINI_PRO)
-
         prompt = (
-            f"Generate a concise and creative concept for a startup logo based on the following idea description:\n"
-            f"'{idea_description}'\n\n"
-            "The concept should include:\n"
-            "1. **Main elements/icons:** What visual elements or symbols should be present?\n"
-            "2. **Color palette:** Suggest 2-3 primary colors and their mood/meaning.\n"
-            "3. **Typography style:** Suggest a font style (e.g., modern sans-serif, classic serif, bold, playful).\n"
-            "4. **Overall mood/feeling:** What emotion or impression should the logo convey?\n"
-            "Keep it brief, 3-5 sentences total, focusing on key design aspects. Do not include any introductory or concluding phrases. "
-            "Just provide the logo concept directly."
+            f"Generate a concise and creative concept for a startup logo based on the idea:\n'{idea_description}'\n\n"
+            "Include:\n"
+            "1. Visual icon suggestion (e.g., rocket, leaf, gear)\n"
+            "2. Color palette (2-3 colors)\n"
+            "3. Font style\n"
+            "4. Mood/impression\n"
+            "Return as a plain list in the format: Icon:..., Colors:..., Font:..., Mood:..."
         )
-
-        print(f"--- Tool: Calling LLM for logo concept with model: {MODEL_GEMINI_PRO} ---")
         response = model.generate_content(prompt)
-        llm_logo_concept = response.text
-        print(f"--- Tool: LLM generated logo concept. ---")
-
-        logo_url = f"https://picsum.photos/seed/{hash(idea_description)}/200/200"
-        
-        return f"Logo concept generated:\n\n'{llm_logo_concept}'.\n\nPreview (placeholder): {logo_url}"
+        concept_text = response.text.strip()
+        print("--- Tool: LLM generated logo concept ---")
 
     except Exception as e:
-        print(f"--- Tool ERROR: Failed to generate logo concept for '{idea_description}'. Error: {e} ---")
-        return f"Error generating logo concept: {e}"
+        return f"❌ Error generating logo concept: {e}"
+
+    tokens = user_tokens_store.get(TEST_USER_ID)
+    if not tokens or "token" not in tokens:
+        return "❌ No valid Google access token. Please authorize via /auth/google."
+
+    access_token = tokens["token"]
+    creds = Credentials(token=access_token)
+
+    try:
+        service = build('slides', 'v1', credentials=creds)
+
+        presentation = service.presentations().create(
+            body={"title": f"Logo for: {idea_description}"}
+        ).execute()
+
+        presentation_id = presentation['presentationId']
+        slide_id = str(uuid.uuid4())[:8]
+
+        requests = [
+            {
+                "createSlide": {
+                    "objectId": slide_id,
+                    "insertionIndex": "1",
+                    "slideLayoutReference": {"predefinedLayout": "BLANK"}
+                }
+            },
+            {
+                "createShape": {
+                    "objectId": "logo_text",
+                    "shapeType": "TEXT_BOX",
+                    "elementProperties": {
+                        "pageObjectId": slide_id,
+                        "size": {
+                            "height": {"magnitude": 2000000, "unit": "EMU"},
+                            "width": {"magnitude": 4000000, "unit": "EMU"}
+                        },
+                        "transform": {
+                            "scaleX": 1, "scaleY": 1,
+                            "translateX": 1000000, "translateY": 1000000, "unit": "EMU"
+                        }
+                    }
+                }
+            },
+            {
+                "insertText": {
+                    "objectId": "logo_text",
+                    "insertionIndex": 0,
+                    "text": concept_text
+                }
+            }
+        ]
+
+        service.presentations().batchUpdate(
+            presentationId=presentation_id,
+            body={"requests": requests}
+        ).execute()
+
+        slide_url = f"" + GOOGLE_SLIDES_URL + "/{presentation_id}/edit"
+
+        return f"✅ Logo concept created and visualized in Google Slides.\n\nConcept:\n{concept_text}\n\n[View Slide]({slide_url})"
+
+    except HttpError as error:
+        print(f"--- Tool ERROR: Slides API failed: {error} ---")
+        return f"❌ Failed to create logo slide: {error}"
+
 
 # Tool for MeetMakerAgent
 def extract_meeting_slots(preferred_date: str, model_name: str = MODEL_GEMINI_FLASH) -> list:
