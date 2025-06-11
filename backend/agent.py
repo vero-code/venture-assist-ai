@@ -1,7 +1,7 @@
 # backend/agent.py
 from google.adk.agents import Agent
-from .agents import ALL_SUB_AGENTS
-from .config import MODEL_GEMINI_PRO
+from agents import ALL_SUB_AGENTS
+from config import MODEL_GEMINI_PRO
 import os
 import google.generativeai as genai
 from dotenv import load_dotenv

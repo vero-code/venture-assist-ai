@@ -4,12 +4,12 @@ import google.generativeai as genai
 import json
 from google.adk.tools.tool_context import ToolContext
 from datetime import datetime, timezone
-from .config import (
+from config import (
     MODEL_GEMINI_FLASH,
     MODEL_GEMINI_PRO
 )
 import requests
-from .state import user_tokens_store, TEST_USER_ID
+from state import user_tokens_store, TEST_USER_ID
 import traceback
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -18,7 +18,6 @@ import json
 from google.oauth2.credentials import Credentials
 
 GOOGLE_CALENDAR_API_ENDPOINT = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
-GOOGLE_SLIDES_URL = 'https://docs.google.com/presentation/d'
 
 # --- Tool Function Definitions ---
 # Each function represents a core operation for its corresponding agent.
@@ -238,7 +237,7 @@ def get_summary(content_to_summarize: str, tool_context: ToolContext) -> str:
 
         # Save summary to session state
         tool_context.state["last_summary"] = llm_summary
-        tool_context.state["last_summary_timestamp"] = datetime.datetime.now()
+        tool_context.state["last_summary_timestamp"] = datetime.now()
         print(f"--- Tool: Summary saved to session state via tool_context. Current state: {tool_context.state} ---")
 
         return f"Summary: {llm_summary}"
@@ -252,7 +251,7 @@ def get_saver(content_to_save: Optional[str] = None, file_name: Optional[str] = 
     Saves content to Google Drive using provided credentials.
     Prioritizes content from session state if available and no explicit content_to_save is provided.
     """
-    from .main import user_tokens_store, TEST_USER_ID
+    from main import user_tokens_store, TEST_USER_ID
 
     print(f"--- Tool: get_saver called. Content provided directly: {content_to_save is not None}, file_name: {file_name} ---")
 
@@ -278,7 +277,7 @@ def get_saver(content_to_save: Optional[str] = None, file_name: Optional[str] = 
         if not safe_content_part: # Fallback if first part is non-alphanumeric
             safe_content_part = "document"
         
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         file_name = f"{safe_content_part}_{timestamp}.txt"
 
         if len(file_name) > 100:
@@ -405,14 +404,13 @@ def get_logo(idea_description: str) -> str:
             body={"requests": requests}
         ).execute()
 
-        slide_url = f"" + GOOGLE_SLIDES_URL + "/{presentation_id}/edit"
+        slide_url = f"https://docs.google.com/presentation/d/{presentation_id}/edit"
 
         return f"✅ Logo concept created and visualized in Google Slides.\n\nConcept:\n{concept_text}\n\n[View Slide]({slide_url})"
 
     except HttpError as error:
         print(f"--- Tool ERROR: Slides API failed: {error} ---")
         return f"❌ Failed to create logo slide: {error}"
-
 
 # Tool for MeetMakerAgent
 def extract_meeting_slots(preferred_date: str, model_name: str = MODEL_GEMINI_FLASH) -> list:

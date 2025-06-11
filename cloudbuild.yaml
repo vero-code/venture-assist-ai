@@ -1,0 +1,13 @@
+# cloudbuild.yaml
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+    - 'build'
+    - '-t'
+    - 'us-central1-docker.pkg.dev/agent-development-kit-461911/venture-assist-ai-images/venture-assist-ai-backend:latest'
+    - '.'
+
+images:
+- 'us-central1-docker.pkg.dev/agent-development-kit-461911/venture-assist-ai-images/venture-assist-ai-backend:latest'
+
+timeout: 1200s

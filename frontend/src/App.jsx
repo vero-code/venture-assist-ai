@@ -6,8 +6,8 @@ function App() {
   const [aiResponse, setAiResponse] = useState('');
   const [authStatus, setAuthStatus] = useState('');
 
-  const BACKEND_URL = 'http://localhost:8080';
-  const GOOGLE_AUTH_URL = `${BACKEND_URL}/auth/google`;
+  const VITE_REACT_APP_BACKEND_URL = import.meta.env.VITE_REACT_APP_BACKEND_URL;
+  const GOOGLE_AUTH_URL = `${VITE_REACT_APP_BACKEND_URL}/auth/google`;
   
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -32,7 +32,7 @@ function App() {
     setAiResponse("AI is thinking...");
 
     try {
-      const response = await fetch(BACKEND_URL + '/chat', {
+      const response = await fetch(VITE_REACT_APP_BACKEND_URL + '/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

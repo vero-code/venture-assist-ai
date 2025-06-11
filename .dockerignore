@@ -1,0 +1,30 @@
+# Python Environment Folders
+.venv/
+venv/
+
+# Python caches
+__pycache__/
+*.pyc
+
+# Docker config and environment files
+Dockerfile
+.dockerignore
+.env
+.env.example
+
+# Version control files
+.git/
+.gitignore
+
+# OS specific files
+.DS_Store
+
+# Other non-backend folders
+frontend/
+multi_tool_agent/
+
+# Ignore log files
+*.log
+
+# Instead, use Secret Manager
+credentials.json
