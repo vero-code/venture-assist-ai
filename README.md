@@ -12,36 +12,42 @@ Smart AI assistant for startups. From idea to public presentation – multi-agen
 
 ## 📝 Table of Contents
 
-* [🔨 Architecture](#architecture)
-* [⚒️ Technologies](#%EF%B8%8F-technologies)
-    * [🗨️ Google Cloud Services](#%EF%B8%8F-google-cloud-services)
-    * [📗 Documentation](#-documentation)
-* [📁 Structure](#-structure)
-* [✨ Features](#%E2%9C%A8-features)
-    * [1️⃣ IdeaValidatorAgent](#%E2%82%A3%EF%B8%8F-ideavalidatoragent)
-    * [2️⃣ MarketResearcherAgent](#%E2%82%A2%EF%B8%8F-marketresearcheragent)
-    * [3️⃣ PitchDeckGeneratorAgent](#%E2%82%A3%EF%B8%8F-pitchdeckgeneratoragent)
-    * [4️⃣ SummarySaverAgent](#%E2%82%A4%EF%B8%8F-summarysaveragent)
-    * [5️⃣ LogoCreatorAgent](#%E2%82%A5%EF%B8%8F-logocreatoragent)
-    * [6️⃣ MeetMakerAgent](#%E2%82%A6%EF%B8%8F-meetmakeragent)
-    * [💾 Agent Memory](#-agent-memory)
-    * [🔒 Authorization moment](#-authorization-moment)
-    * [🎥 Meet Planning](#-meet-planning)
-    * [📒 Slide creation](#-slide-creation)
-* [🔬 Testing](#-testing)
+* 🔨 [Architecture](#architecture)
+* 🎯 [Target Audience](#-target-audience)
+* ⚒️ [Technologies](#%EF%B8%8F-technologies)
+    * 🗨️ [Google Cloud Services](#%EF%B8%8F-google-cloud-services)
+    * 📗 [Documentation](#-documentation)
+* 📁 [Structure](#-structure)
+* ✨ [Features](#%E2%9C%A8-features)
+    * 1️⃣ [IdeaValidatorAgent](#%E2%82%A3%EF%B8%8F-ideavalidatoragent)
+    * 2️⃣ [MarketResearcherAgent](#%E2%82%A2%EF%B8%8F-marketresearcheragent)
+    * 3️⃣ [PitchDeckGeneratorAgent](#%E2%82%A3%EF%B8%8F-pitchdeckgeneratoragent)
+    * 4️⃣ [SummarySaverAgent](#%E2%82%A4%EF%B8%8F-summarysaveragent)
+    * 5️⃣ [LogoCreatorAgent](#%E2%82%A5%EF%B8%8F-logocreatoragent)
+    * 6️⃣ [MeetMakerAgent](#%E2%82%A6%EF%B8%8F-meetmakeragent)
+    * 💾 [Agent Memory](#-agent-memory)
+    * 🔒 [Authorization moment](#-authorization-moment)
+    * 🎥 [Meet Planning](#-meet-planning)
+    * 📒 [Slide creation](#-slide-creation)
+* 🔬 [Testing](#-testing)
     * [IdeaValidatorAgent](#ideavalidatoragent-1)
     * [MarketResearcherAgent](#marketresearcheragent-1)
     * [PitchDeckGeneratorAgent](#pitchdeckgeneratoragent-1)
     * [SummarySaverAgent](#summarysaveragent-1)
     * [LogoCreatorAgent](#logocreatoragent-1)
     * [MeetMakerAgent](#meetmakeragent-1)
-* [🏍️ How to run](#how-to-run)
-* [📄 License & contribution](#-license--contribution)
+* 🏍️ [How to run](#how-to-run)
+* 📄 [License & contribution](#-license--contribution)
 
 
 ## 🔨 Architecture
 
-At the top level, the **Coordinator/Dispatcher pattern** is used for the `venture_coordinator_agent`, which redirects the user to the appropriate specialized agents. The complete architecture will be shown in the final diagram.
+At the top level, the Coordinator/Dispatcher pattern is used for the venture_coordinator_agent, which redirects the user to the appropriate specialized agents. Crucially, the agents in this system don't merely execute tools; they leverage their LLM capabilities to interpret tool outputs, provide contextualized responses, and intelligently suggest next steps or delegate tasks to other specialized agents. This ensures a fluid, human-like interaction and guidance throughout the startup journey. The complete architecture will be shown in the final diagram.
+
+
+## 🎯 Target Audience
+
+Venture Assist AI is designed for **early-stage founders, solopreneurs, and startup teams** who want to validate their ideas quickly, define their market strategy, and generate a compelling pitch — all without needing a full product or extensive team yet.
 
 
 ## ⚒️ Technologies
@@ -146,6 +152,8 @@ Total 7 agents (1 coordinator & 6 subagents):
 6️⃣ **MeetMakerAgent** -> `get_meeting`
    - **Capabilities:** Organizes a meeting with a specified participant.
    - **User Benefit:** Extracts a date from the user input and writes the meeting to the calendar.
+
+> All agents not only confirms the validity of an idea but also provides contextual interpretation of the tool's output, suggesting further validation steps or delegating to another agent as needed.
 
 
 ### 💾 Agent Memory
@@ -353,3 +361,5 @@ The frontend is hosted on **Firebase Hosting**, providing a fast and reliable pl
 ## 📄 License & Contribution
 
 This project is licensed under the MIT License. When using this software, please remember to provide appropriate attribution to the original author.
+
+> Note on the scope of the hackathon: For the purposes of this hackathon, the project is focused on demonstrating the functionality of the multi-agent system. Accordingly, some aspects, such as multi-user management and session persistence, have been simplified, assuming use by a single "test" user. The development of a full production version will include expansion of these capabilities.
