@@ -42,7 +42,9 @@ Smart AI assistant for startups. From idea to public presentation – multi-agen
 
 ## 🔨 Architecture
 
-At the top level, the Coordinator/Dispatcher pattern is used for the venture_coordinator_agent, which redirects the user to the appropriate specialized agents. Crucially, the agents in this system don't merely execute tools; they leverage their LLM capabilities to interpret tool outputs, provide contextualized responses, and intelligently suggest next steps or delegate tasks to other specialized agents. This ensures a fluid, human-like interaction and guidance throughout the startup journey. The complete architecture will be shown in the final diagram.
+At the top level, the Coordinator/Dispatcher pattern is used for the venture_coordinator_agent, which redirects the user to the appropriate specialized agents. Crucially, the agents in this system don't merely execute tools; they leverage their LLM capabilities to interpret tool outputs, provide contextualized responses, and intelligently suggest next steps or delegate tasks to other specialized agents. This ensures a fluid, human-like interaction and guidance throughout the startup journey. The complete architecture is shown in the final diagram.
+
+![Architecture Diagram](images/architecture-diagram.png)
 
 
 ## 🎯 Target Audience
