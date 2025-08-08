@@ -1,6 +1,6 @@
 # backend/agents.py
 from google.adk.agents import Agent
-from tools import (
+from .tools import (
     get_validator,
     get_research,
     get_pitch,
@@ -9,7 +9,7 @@ from tools import (
     get_logo,
     get_meeting
 )
-from config import (
+from .config import (
     MODEL_GEMINI_FLASH,
     MODEL_GEMINI_PRO
 )

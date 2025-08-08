@@ -1,19 +1,13 @@
 # backend/agent.py
 from google.adk.agents import Agent
-from agents import ALL_SUB_AGENTS
-from config import MODEL_GEMINI_PRO
+from .agents import ALL_SUB_AGENTS
+from .config import MODEL_GEMINI_PRO
 import os
 import google.generativeai as genai
 from dotenv import load_dotenv
 
-# --- Congiguration ---
+# --- Configuration ---
 load_dotenv()
-api_key = os.environ.get("GOOGLE_API_KEY")
-
-if not api_key:
-    raise ValueError("API key GOOGLE_API_KEY not found. Please check your .env file.")
-
-genai.configure(api_key=api_key)
 
 # --- Main Coordinator Agent (root_agent) ---
 root_agent = Agent(

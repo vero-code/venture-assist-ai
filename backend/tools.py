@@ -1,15 +1,14 @@
 # backend/tools.py
 from typing import Optional, List
 import google.generativeai as genai
-import json
 from google.adk.tools.tool_context import ToolContext
 from datetime import datetime, timezone
-from config import (
+from .config import (
     MODEL_GEMINI_FLASH,
     MODEL_GEMINI_PRO
 )
 import requests
-from state import user_tokens_store, TEST_USER_ID
+from .state import user_tokens_store, TEST_USER_ID
 import traceback
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -251,7 +250,7 @@ def get_saver(content_to_save: Optional[str] = None, file_name: Optional[str] = 
     Saves content to Google Drive using provided credentials.
     Prioritizes content from session state if available and no explicit content_to_save is provided.
     """
-    from main import user_tokens_store, TEST_USER_ID
+    # from main import user_tokens_store, TEST_USER_ID
 
     print(f"--- Tool: get_saver called. Content provided directly: {content_to_save is not None}, file_name: {file_name} ---")
 

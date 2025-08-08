@@ -6,12 +6,12 @@ from dotenv import load_dotenv
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
-from agent import root_agent
+from .agent import root_agent
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.genai.types import Content, Part
-from state import user_tokens_store, TEST_USER_ID
+from .state import user_tokens_store, TEST_USER_ID
 
 load_dotenv()
 

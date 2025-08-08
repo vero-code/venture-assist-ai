@@ -1,13 +1,40 @@
 # cloudbuild.yaml
+# This file automates building the Docker image,
+# pushing it to the Artifact Registry,
+# and deploying it to Cloud Run.
 steps:
+# 1. Building a Docker Image
 - name: 'gcr.io/cloud-builders/docker'
   args:
     - 'build'
     - '-t'
-    - 'us-central1-docker.pkg.dev/agent-development-kit-461911/venture-assist-ai-images/venture-assist-ai-backend:latest'
+    - 'us-central1-docker.pkg.dev/venture-assist-ai/venture-assist-images/venture-assist-backend:latest'
     - '.'
+  id: 'Build'
+
+# 2. Submit an image to Artifact Registry
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+    - 'push'
+    - 'us-central1-docker.pkg.dev/venture-assist-ai/venture-assist-images/venture-assist-backend:latest'
+  id: 'Push'
+
+# 3. Deploy the image to Cloud Run
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  entrypoint: 'gcloud'
+  args:
+    - 'run'
+    - 'deploy'
+    - 'venture-assist-backend'
+    - '--image=us-central1-docker.pkg.dev/venture-assist-ai/venture-assist-images/venture-assist-backend:latest'
+    - '--region=us-central1'
+    - '--platform=managed'
+    - '--allow-unauthenticated'
+    - '--port=8000'
+    - '--set-secrets=GOOGLE_GENAI_USE_VERTEXAI=GOOGLE_GENAI_USE_VERTEXAI:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest,GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest,GOOGLE_REDIRECT_URI=GOOGLE_REDIRECT_URI:latest,GOOGLE_PROJECT_ID=GOOGLE_PROJECT_ID:latest,FRONTEND_URL=FRONTEND_URL:latest'
+  id: 'Deploy'
 
 images:
-- 'us-central1-docker.pkg.dev/agent-development-kit-461911/venture-assist-ai-images/venture-assist-ai-backend:latest'
+- 'us-central1-docker.pkg.dev/venture-assist-ai/venture-assist-images/venture-assist-backend:latest'
 
-timeout: 1200s
+timeout: '1200s'
