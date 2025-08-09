@@ -1,10 +1,13 @@
 // frontend/src/App.jsx
 import React, { useState, useEffect } from 'react';
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 function App() {
   const [userQuery, setUserQuery] = useState('');
   const [aiResponse, setAiResponse] = useState('');
   const [authStatus, setAuthStatus] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const VITE_REACT_APP_BACKEND_URL = import.meta.env.VITE_REACT_APP_BACKEND_URL;
   const GOOGLE_AUTH_URL = `${VITE_REACT_APP_BACKEND_URL}/auth/google`;
@@ -29,7 +32,10 @@ function App() {
   };
 
   const handleSubmitQuery = async () => {
-    setAiResponse("AI is thinking...");
+    if (!userQuery.trim()) return;
+
+    setIsLoading(true);
+    setAiResponse("");
 
     try {
       const response = await fetch(VITE_REACT_APP_BACKEND_URL + '/chat', {
@@ -50,12 +56,13 @@ function App() {
     } catch (error) {
       console.error("Error sending query to backend:", error);
       setAiResponse("Error: Could not get response from AI. Please try again later.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleConnectGoogle = () => {
-    const googleAuthUrl = GOOGLE_AUTH_URL;
-    window.location.href = googleAuthUrl;
+    window.location.href = GOOGLE_AUTH_URL;
   };
 
   return (
@@ -66,7 +73,7 @@ function App() {
       </p>
 
       {authStatus && (
-        <div className={`mt-4 p-3 rounded-lg ${authStatus.includes('Failed') ? 'bg-red-200 text-red-800' : 'bg-green-200 text-green-800'}`}>
+        <div className={`mt-4 p-3 rounded-lg text-center ${authStatus.includes('Failed') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
           {authStatus}
         </div>
       )}
@@ -83,8 +90,9 @@ function App() {
         <button
           className="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-xl transition-all"
           onClick={handleSubmitQuery}
+          disabled={isLoading}
         >
-          Get AI Assistance
+          {isLoading ? 'Thinking...' : 'Get AI Assistance'}
         </button>
 
         <button
@@ -95,12 +103,17 @@ function App() {
         </button>
       </div>
 
-      {aiResponse && (
+      {(aiResponse || isLoading) && (
         <div className="max-w-xl mx-auto mt-6 p-6 bg-white rounded-2xl shadow-lg">
           <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">AI Response</h2>
-          <p className="text-gray-700 whitespace-pre-wrap">
-            {aiResponse}
-          </p>
+          {isLoading && !aiResponse && <p className="text-gray-700 text-center">AI is thinking...</p>}
+            {aiResponse && (
+              <div className="prose max-w-none">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {aiResponse}
+                </ReactMarkdown>
+              </div>
+            )}
         </div>
       )}
     </div>
